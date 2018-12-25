@@ -1,0 +1,11 @@
+{application, erllambda_sam_boot_test,
+ [{description, "erllambda function - erllambda_sam_boot_test"},
+  {vsn, "git"},
+  {registered, []},
+  {applications, [kernel, stdlib, erllambda]},
+  {env,[]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.

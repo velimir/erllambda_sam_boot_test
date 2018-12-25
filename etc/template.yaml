@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >-
+  Function to test boot time
+
+Parameters:
+  LogStreamARN:
+    Description: >-
+      Kinesis stream ARN where to deliver cloudwatch logs from lambda
+    Type: String
+
+  CodeLoadingMode:
+    Description: >-
+      Erlang code loading mode
+    Type: String
+    AllowedValues:
+      - interactive
+      - embedded
+
+Resources:
+  BootTestFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: erllambda_sam_boot_test
+      CodeUri: ../_build/prod/rel/erllambda_sam_boot_test-1.0.0.zip
+      Description: >-
+        Function to test boot time
+      Runtime: provided
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          CODE_LOADING_MODE: !Ref CodeLoadingMode
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${BootTestFunction}"
+      RetentionInDays: 1
+
+  SubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      RoleArn: !GetAtt CloudWatchToKinesisRole.Arn
+      LogGroupName: !Ref LogGroup
+      DestinationArn: !Ref LogStreamARN
+      FilterPattern: ""
+
+  CloudWatchToKinesisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - sts:AssumeRole
+
+  CloudWatchToKinesisPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "CloudWatchToKinesisPolicy-${AWS::StackName}"
+      Roles:
+        - !Ref CloudWatchToKinesisRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "kinesis:PutRecord"
+            Resource:
+              - !Ref LogStreamARN
+          - Effect: Allow
+            Action:
+              - "iam:PassRole"
+            Resource: !GetAtt CloudWatchToKinesisRole.Arn
+
+Outputs:
+  BootTestFunction:
+    Description: Test function to test invocation time
+    Value: !Ref BootTestFunction
